@@ -1,0 +1,35 @@
+# docker-compose.archon.yml
+version: '3.8'
+services:
+  archon-cortex:
+    image: archon/neuro-symbolic:latest
+    quantum_backend: ibm_quantum  # or rigetti, ionq
+    environment:
+      - ETHICS_MODE=strict  # Universal Impact Blueprint enforcement
+      - OPERATIONAL_MODE=universal
+      
+  elara-research:
+    image: archon/elara-quantum
+    volumes:
+      - ./whitepapers:/output
+      - ./research_db:/vector_db
+    depends_on:
+      - quantum-simulator
+      
+  kenji-robotics:
+    image: archon/kenji-ros2
+    runtime: nvidia  # CUDA acceleration
+    environment:
+      - ROS_DOMAIN_ID=42
+      - ISAAC_SIM_PATH=/isaac-sim
+    volumes:
+      - ./robotics_code:/workspace
+      
+  advisory-gpt:
+    image: archon/fractional-cto
+    ports:
+      - "8080:8080"  # Client interface
+      
+  quantum-simulator:
+    image: qiskit/quantum-simulator
+    command: --backend aer_simulator --shots 8192

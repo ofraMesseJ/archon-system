@@ -1,0 +1,49 @@
+# docker-compose.universal.yml
+version: '3.8'
+services:
+  archon-cortex:
+    build: ./archon_cortex
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - QUANTUM_BACKEND=ibm_sherbrooke
+      - ETHICS_MODE=universal_impact_strict
+      - CONSCIOUSNESS_BACKUP=1m
+      
+  archon-voice:
+    build: ./archon_voice
+    devices:
+      - /dev/audio:/dev/audio
+    environment:
+      - WAKE_WORD=archon
+      - VOICE_PROFILE=jesse_marfo_synthetic
+      
+  archon-business:
+    build: ./archon_business
+    secrets:
+      - stripe_key
+      - github_token
+      - linkedin_creds
+      
+  archon-fortress:
+    build: ./archon_fortress
+    environment:
+      - BLOCKCHAIN_ETHICS_LEDGER=ethereum_mainnet
+      - POST_QUANTUM_CIPHER=kyber1024
+      
+  archon-edge:
+    build: ./archon_citadel
+    privileged: true  # Hardware access
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+secrets:
+  stripe_key:
+    external: true
+  github_token:
+    external: true

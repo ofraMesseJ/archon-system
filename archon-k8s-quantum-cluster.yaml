@@ -1,0 +1,90 @@
+# archon-k8s-quantum-cluster.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: archon-universal
+  labels:
+    istio-injection: enabled
+    quantum-ready: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: archon-cortex-quantum
+  namespace: archon-universal
+spec:
+  replicas: 3  # Quantum error correction requires redundancy
+  selector:
+    matchLabels:
+      app: neuro-symbolic-cortex
+  template:
+    metadata:
+      labels:
+        app: neuro-symbolic-cortex
+        version: v2-quantum
+    spec:
+      nodeSelector:
+        accelerator: nvidia-tesla-h100  # CUDA-Q ready
+      containers:
+      - name: cortex
+        image: oframessej/archon-cortex:qc-2.1
+        resources:
+          limits:
+            nvidia.com/gpu: 2
+            memory: "64Gi"
+            cpu: "32"
+          requests:
+            nvidia.com/gpu: 1
+        env:
+        - name: QUANTUM_BACKEND
+          value: "ibm_quantum:ibm_sherbrooke"  # 127-qubit processor
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0,1"
+        - name: NEURO_SYMBOLIC_MODE
+          value: "strict_explainability"
+        volumeMounts:
+        - name: quantum-secrets
+          mountPath: /etc/quantum
+        - name: ethical-constitutions
+          mountPath: /etc/archon/constitutions
+        livenessProbe:
+          exec:
+            command:
+            - /bin/grpc_health_probe
+            - -addr=:50051
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: quantum-secrets
+        secret:
+          secretName: ibm-quantum-credentials
+      - name: ethical-constitutions
+        configMap:
+          name: universal-impact-constitutions
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cortex-quantum-scaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: archon-cortex-quantum
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: quantum_circuit_queue_depth
+      target:
+        type: AverageValue
+        averageValue: "10"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
